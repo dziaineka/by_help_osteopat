@@ -107,8 +107,8 @@ async def cmd_start(message: types.Message):
     """
     logger.info('Старт бота - ' + str(message.chat.id))
 
-    keyboard = get_keyboard('Я пострадавший',
-                            'Я прошу помощи для другого человека')
+    keyboard = get_keyboard('Я прошу помощь для себя',
+                            'Я прошу помощь для другого человека')
 
     text = 'Добрый день!' +\
         '\n' +\
@@ -118,7 +118,7 @@ async def cmd_start(message: types.Message):
     await Form.initial.set()
 
 
-@dp.message_handler(lambda message: message.text == 'Я пострадавший',
+@dp.message_handler(lambda message: message.text == 'Я прошу помощь для себя',
                     content_types=types.ContentType.TEXT,
                     state=Form.initial)
 async def ask_victim_info(message: types.Message, state: FSMContext):
@@ -130,7 +130,7 @@ async def ask_victim_info(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(
-    lambda message: message.text == 'Я прошу помощи для другого человека',
+    lambda message: message.text == 'Я прошу помощь для другого человека',
     content_types=types.ContentType.TEXT,
     state=Form.initial)
 async def ask_good_man_info(message: types.Message, state: FSMContext):
@@ -173,7 +173,7 @@ async def approve_request(message: types.Message, state: FSMContext):
         'Специалист свяжется с вами лично.' +\
         '\n\nДержитесь, друзья, вы невероятные!'
 
-    keyboard = get_keyboard('Отправить еще одно обращение')
+    keyboard = get_keyboard('Я хочу подать ещё одну заявку')
 
     await bot.send_message(message.chat.id,
                            text_to_user,
