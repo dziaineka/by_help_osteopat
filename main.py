@@ -349,9 +349,11 @@ async def cancel_input(call, state: FSMContext):
     await cmd_start(call.message)
 
 
-@dp.message_handler(content_types=types.ContentTypes.ANY, state=None)
+@dp.message_handler(lambda message: message.chat.id > 0,
+                    content_types=types.ContentTypes.ANY,
+                    state=None)
 async def no_state(message: types.Message, state: FSMContext):
-    logger.info('Нет стейта - ' + str(message.from_user.id))
+    logger.info('Нет стейта - ' + str(message.chat.id))
     await cmd_start(message)
 
 
