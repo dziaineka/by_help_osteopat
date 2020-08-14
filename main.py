@@ -24,11 +24,13 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
-def get_keyboard(
-        button: types.InlineKeyboardButton) -> types.InlineKeyboardMarkup:
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
-    keyboard.add(button)
-    return keyboard
+def get_keyboard(*buttons: str) -> types.ReplyKeyboardMarkup:
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+
+    for button in buttons:
+        markup.add(button)
+
+    return markup
 
 
 async def send_info_to_doctor(state: FSMContext, user_id: int):
@@ -45,6 +47,16 @@ async def send_info_to_doctor(state: FSMContext, user_id: int):
 
     await bot.send_message(user_id,
                            text_to_user,
+                           parse_mode='HTML')
+
+
+async def show_summary(data: FSMContextProxy, user_id: int):
+    text_to_chat = compose_summary(data)
+    keyboard = get_keyboard('Отправить', 'НЕ отправлять')
+
+    await bot.send_message(user_id,
+                           text_to_chat,
+                           reply_markup=keyboard,
                            parse_mode='HTML')
 
 
@@ -74,11 +86,7 @@ async def ask_for_victim_name(user_id: int):
         '\n' +\
         '\n Пример: <b>Иван Иванов</b>'
 
-    anon = types.InlineKeyboardButton(
-        text='Аноним',
-        callback_data='/anonymous')
-
-    keyboard = get_keyboard(anon)
+    keyboard = get_keyboard('Аноним')
 
     await bot.send_message(user_id,
                            text,
@@ -93,6 +101,7 @@ async def ask_for_age(user_id: int):
 
     await bot.send_message(user_id,
                            text,
+                           reply_markup=types.ReplyKeyboardRemove(),
                            parse_mode='HTML')
 
 
@@ -151,25 +160,45 @@ async def ask_good_man_info(call, state: FSMContext):
     await Form.good_man_name.set()
 
 
-@dp.callback_query_handler(lambda call: call.data == '/anonymous',
-                           state=Form.name)
-async def victim_is_anonymous(call, state: FSMContext):
-    logger.info('Пострадавший имя аноним - ' + str(call.message.chat.id))
-    await bot.answer_callback_query(call.id)
-    await state.update_data(name='Аноним')
-    await ask_for_age(call.message.chat.id)
+@dp.message_handler(lambda message: message.text == 'Пропустить',
+                    content_types=types.ContentType.TEXT,
+                    state=Form.questions)
+async def skip_question(message: types.Message, state: FSMContext):
+    logger.info('Пропуск вопроса - ' + str(message.chat.id))
+    await state.update_data(questions='')
+
+    async with state.proxy() as data:
+        await show_summary(data, message.chat.id)
+
     await Form.next()
 
 
-@dp.callback_query_handler(lambda call: call.data == '/skip',
-                           state=Form.questions)
-async def skip_questions(call, state: FSMContext):
-    logger.info('Пропуск вопроса - ' + str(call.message.chat.id))
-    await bot.answer_callback_query(call.id)
-    await state.update_data(questions='')
-    await send_info_to_doctor(state, call.message.chat.id)
+@dp.message_handler(lambda message: message.text == 'Отправить',
+                    content_types=types.ContentType.TEXT,
+                    state=Form.approve)
+async def approve_request(message: types.Message, state: FSMContext):
+    logger.info('Отправка запроса - ' + str(message.chat.id))
+    await send_info_to_doctor(state, message.chat.id)
+
+    text_to_user = 'Спасибо! Ваша заявка отправлена. ' +\
+        'Специалист свяжется с вами лично.' +\
+        '\n\nДержитесь, друзья, вы невероятные!'
+
+    await bot.send_message(message.chat.id,
+                           text_to_user,
+                           parse_mode='HTML')
+
     await state.finish()
-    await cmd_start(call.message)
+    await Form.next()
+
+
+@dp.message_handler(lambda message: message.text == 'НЕ отправлять',
+                    content_types=types.ContentType.TEXT,
+                    state=Form.approve)
+async def reject_request(message: types.Message, state: FSMContext):
+    logger.info('Не отправлять запрос - ' + str(message.chat.id))
+    await state.finish()
+    await cmd_start(message)
 
 
 @dp.message_handler(content_types=types.ContentType.TEXT, state=Form.name)
@@ -267,11 +296,7 @@ async def process_communication(message: types.Message, state: FSMContext):
         '\n' +\
         '\n Введите вопрос или нажмите "Пропустить".'
 
-    skip = types.InlineKeyboardButton(
-        text='Пропустить',
-        callback_data='/skip')
-
-    keyboard = get_keyboard(skip)
+    keyboard = get_keyboard('Пропустить')
 
     await bot.send_message(message.chat.id,
                            text,
@@ -287,9 +312,11 @@ async def process_communication(message: types.Message, state: FSMContext):
 async def process_questions(message: types.Message, state: FSMContext):
     logger.info('Вопросы - ' + str(message.chat.id))
     await state.update_data(questions=message.text)
-    await send_info_to_doctor(state, message.chat.id)
-    await state.finish()
-    await cmd_start(message)
+
+    async with state.proxy() as data:
+        await show_summary(data, message.chat.id)
+
+    await Form.next()
 
 
 @dp.callback_query_handler(lambda call: call.data == '/cancel', state='*')

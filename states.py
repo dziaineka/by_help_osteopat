@@ -12,3 +12,4 @@ class Form(StatesGroup):
     location = State()
     communication = State()
     questions = State()
+    approve = State()
