@@ -55,8 +55,8 @@ async def send_info_to_doctor(state: FSMContext, user_id: int):
                            text_to_chat,
                            parse_mode='HTML')
 
-    text_to_user = 'Ваша заявка отправлена. ' +\
-        'Специалист, свяжется с вами лично.' +\
+    text_to_user = 'Спасибо! Ваша заявка отправлена. ' +\
+        'Специалист свяжется с вами лично.' +\
         '\n\nДержитесь, друзья, вы невероятные!'
 
     await bot.send_message(user_id,
