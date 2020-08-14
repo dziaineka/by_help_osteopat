@@ -41,17 +41,12 @@ async def send_info_to_doctor(state: FSMContext, user_id: int):
                            text_to_chat,
                            parse_mode='HTML')
 
-    text_to_user = 'Спасибо! Ваша заявка отправлена. ' +\
-        'Специалист свяжется с вами лично.' +\
-        '\n\nДержитесь, друзья, вы невероятные!'
-
-    await bot.send_message(user_id,
-                           text_to_user,
-                           parse_mode='HTML')
-
 
 async def show_summary(data: FSMContextProxy, user_id: int):
-    text_to_chat = compose_summary(data)
+    text_to_chat =\
+        'Нажмите "Отправить", чтобы отправить следующий запрос врачам:\n\n' +\
+        compose_summary(data)
+
     keyboard = get_keyboard('Отправить', 'НЕ отправлять')
 
     await bot.send_message(user_id,
@@ -76,7 +71,7 @@ def compose_summary(data: FSMContextProxy):
 '''
 
     if questions := data.get('questions', ''):
-        text + f'\nВопрос/комментарий: <b>{questions}</b>'
+        text += f'Вопрос/комментарий: <b>{questions}</b>'
 
     return text
 
@@ -111,17 +106,9 @@ async def cmd_start(message: types.Message):
     Conversation's entry point
     """
     logger.info('Старт бота - ' + str(message.chat.id))
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
 
-    victim = types.InlineKeyboardButton(
-        text='Я пострадавший',
-        callback_data='/victim')
-
-    good_man = types.InlineKeyboardButton(
-        text='Я прошу помощи для другого человека',
-        callback_data='/good_man')
-
-    keyboard.add(victim, good_man)
+    keyboard = get_keyboard('Я пострадавший',
+                            'Я прошу помощи для другого человека')
 
     text = 'Добрый день!' +\
         '\n' +\
@@ -131,30 +118,32 @@ async def cmd_start(message: types.Message):
     await Form.initial.set()
 
 
-@dp.callback_query_handler(lambda call: call.data == '/victim',
-                           state=Form.initial)
-async def ask_victim_info(call, state: FSMContext):
+@dp.message_handler(lambda message: message.text == 'Я пострадавший',
+                    content_types=types.ContentType.TEXT,
+                    state=Form.initial)
+async def ask_victim_info(message: types.Message, state: FSMContext):
     logger.info('Нажата кнопка ввода инфы пострадавшего - ' +
-                str(call.message.chat.id))
+                str(message.chat.id))
 
-    await bot.answer_callback_query(call.id)
-    await ask_for_victim_name(call.message.chat.id)
+    await ask_for_victim_name(message.chat.id)
     await Form.name.set()
 
 
-@dp.callback_query_handler(lambda call: call.data == '/good_man',
-                           state=Form.initial)
-async def ask_good_man_info(call, state: FSMContext):
+@dp.message_handler(
+    lambda message: message.text == 'Я прошу помощи для другого человека',
+    content_types=types.ContentType.TEXT,
+    state=Form.initial)
+async def ask_good_man_info(message: types.Message, state: FSMContext):
     logger.info('Нажата кнопка ввода инфы хорошего человека - ' +
-                str(call.message.chat.id))
+                str(message.chat.id))
 
-    await bot.answer_callback_query(call.id)
     text = 'Укажите ваше имя' +\
         '\n' +\
         '\n Пример: <b>Петр Петров</b>'
 
-    await bot.send_message(call.message.chat.id,
+    await bot.send_message(message.chat.id,
                            text,
+                           reply_markup=types.ReplyKeyboardRemove(),
                            parse_mode='HTML')
 
     await Form.good_man_name.set()
@@ -184,8 +173,11 @@ async def approve_request(message: types.Message, state: FSMContext):
         'Специалист свяжется с вами лично.' +\
         '\n\nДержитесь, друзья, вы невероятные!'
 
+    keyboard = get_keyboard('Отправить еще одно обращение')
+
     await bot.send_message(message.chat.id,
                            text_to_user,
+                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await state.finish()
@@ -338,8 +330,19 @@ async def no_state(message: types.Message, state: FSMContext):
 @dp.message_handler(content_types=types.ContentTypes.ANY,
                     state=Form.initial)
 async def ask_for_button_press(message: types.Message, state: FSMContext):
-    logger.info('Нужно нажать на кнопку - ' + str(message.from_user.id))
+    logger.info('Не жмет кнопку в начальном стейте - ' +
+                str(message.from_user.id))
+
     await cmd_start(message)
+
+
+@dp.message_handler(content_types=types.ContentTypes.ANY,
+                    state=Form.approve)
+async def ask_for_button_press(message: types.Message, state: FSMContext):
+    logger.info('Нужно нажать на кнопку - ' + str(message.from_user.id))
+
+    text = 'Нажмите на одну из кнопок ниже.'
+    await bot.send_message(message.chat.id, text)
 
 
 @dp.message_handler(content_types=types.ContentType.ANY, state='*')
