@@ -311,14 +311,6 @@ async def process_questions(message: types.Message, state: FSMContext):
     await Form.next()
 
 
-@dp.callback_query_handler(lambda call: call.data == '/cancel', state='*')
-async def cancel_input(call, state: FSMContext):
-    logger.info('Возврат в начальный режим - ' + str(call.from_user.id))
-    await bot.answer_callback_query(call.id)
-    await state.finish()
-    await cmd_start(call.message)
-
-
 @dp.message_handler(lambda message: message.chat.id > 0,
                     content_types=types.ContentTypes.ANY,
                     state=None)
@@ -331,7 +323,7 @@ async def no_state(message: types.Message, state: FSMContext):
                     state=Form.initial)
 async def ask_for_button_press(message: types.Message, state: FSMContext):
     logger.info('Не жмет кнопку в начальном стейте - ' +
-                str(message.from_user.id))
+                str(message.chat.id))
 
     await cmd_start(message)
 
@@ -339,16 +331,18 @@ async def ask_for_button_press(message: types.Message, state: FSMContext):
 @dp.message_handler(content_types=types.ContentTypes.ANY,
                     state=Form.approve)
 async def ask_for_button_press(message: types.Message, state: FSMContext):
-    logger.info('Нужно нажать на кнопку - ' + str(message.from_user.id))
+    logger.info('Нужно нажать на кнопку - ' + str(message.chat.id))
 
     text = 'Нажмите на одну из кнопок ниже.'
     await bot.send_message(message.chat.id, text)
 
 
-@dp.message_handler(content_types=types.ContentType.ANY, state='*')
+@dp.message_handler(lambda message: message.chat.id > 0,
+                    content_types=types.ContentType.ANY,
+                    state='*')
 async def only_text_allowed(message: types.Message, state: FSMContext):
     logger.info('Посылает не текст, а что-то другое - ' +
-                str(message.from_user.id))
+                str(message.chat.id))
 
     text = 'Допускается только ввод текста.'
     await bot.send_message(message.chat.id, text)
