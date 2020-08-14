@@ -24,26 +24,10 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
-def get_keyboard_with_cancel(
+def get_keyboard(
         button: types.InlineKeyboardButton) -> types.InlineKeyboardMarkup:
     keyboard = types.InlineKeyboardMarkup(row_width=2)
-
-    cancel = types.InlineKeyboardButton(
-        text='Отмена',
-        callback_data='/cancel')
-
-    keyboard.add(button, cancel)
-    return keyboard
-
-
-def get_cancel_keyboard() -> types.InlineKeyboardMarkup:
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-
-    cancel = types.InlineKeyboardButton(
-        text='Отмена',
-        callback_data='/cancel')
-
-    keyboard.add(cancel)
+    keyboard.add(button)
     return keyboard
 
 
@@ -94,7 +78,7 @@ async def ask_for_victim_name(user_id: int):
         text='Аноним',
         callback_data='/anonymous')
 
-    keyboard = get_keyboard_with_cancel(anon)
+    keyboard = get_keyboard(anon)
 
     await bot.send_message(user_id,
                            text,
@@ -107,11 +91,8 @@ async def ask_for_age(user_id: int):
         '\n' +\
         '\n Пример: <b>15.08.2000, 20 лет</b>'
 
-    keyboard = get_cancel_keyboard()
-
     await bot.send_message(user_id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
 
@@ -163,29 +144,11 @@ async def ask_good_man_info(call, state: FSMContext):
         '\n' +\
         '\n Пример: <b>Петр Петров</b>'
 
-    anon = types.InlineKeyboardButton(
-        text='Аноним',
-        callback_data='/anonymous')
-
-    keyboard = get_keyboard_with_cancel(anon)
-
     await bot.send_message(call.message.chat.id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await Form.good_man_name.set()
-
-
-@dp.callback_query_handler(lambda call: call.data == '/anonymous',
-                           state=Form.good_man_name)
-async def good_man_is_anonymous(call, state: FSMContext):
-    logger.info('Хороший человек имя аноним - ' + str(call.message.chat.id))
-    await bot.answer_callback_query(call.id)
-    await state.update_data(good_man_name='Аноним')
-
-    await ask_for_victim_name(call.message.chat.id)
-    await Form.next()
 
 
 @dp.callback_query_handler(lambda call: call.data == '/anonymous',
@@ -235,11 +198,8 @@ async def process_age(message: types.Message, state: FSMContext):
         '\n' +\
         '\n Пример: <b>11.08.2020</b>'
 
-    keyboard = get_cancel_keyboard()
-
     await bot.send_message(message.chat.id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await Form.next()
@@ -255,11 +215,8 @@ async def process_injury_date(message: types.Message, state: FSMContext):
         '\n' +\
         '\n Пример: <b>панические атаки, закрытый перелом руки, гематомы</b>'
 
-    keyboard = get_cancel_keyboard()
-
     await bot.send_message(message.chat.id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await Form.next()
@@ -275,11 +232,8 @@ async def process_injury_list(message: types.Message, state: FSMContext):
         '\n' +\
         '\n Пример: <b>Минск</b>'
 
-    keyboard = get_cancel_keyboard()
-
     await bot.send_message(message.chat.id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await Form.next()
@@ -296,11 +250,8 @@ async def process_location(message: types.Message, state: FSMContext):
         '\n Пример: <b>+375291234567</b>' +\
         '\n Пример: <b>telegram @username</b>'
 
-    keyboard = get_cancel_keyboard()
-
     await bot.send_message(message.chat.id,
                            text,
-                           reply_markup=keyboard,
                            parse_mode='HTML')
 
     await Form.next()
@@ -320,7 +271,7 @@ async def process_communication(message: types.Message, state: FSMContext):
         text='Пропустить',
         callback_data='/skip')
 
-    keyboard = get_keyboard_with_cancel(skip)
+    keyboard = get_keyboard(skip)
 
     await bot.send_message(message.chat.id,
                            text,
