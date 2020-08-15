@@ -251,7 +251,7 @@ async def process_injury_list(message: types.Message, state: FSMContext):
 
     text = 'Укажите, в каком населённом пункте находится пострадавший' +\
         '\n' +\
-        '\n Пример: <b>Минск</b>'
+        '\n Пример: <b>Минск, Партизанский район</b>'
 
     await bot.send_message(message.chat.id,
                            text,
