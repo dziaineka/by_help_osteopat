@@ -33,12 +33,20 @@ def get_keyboard(*buttons: str) -> types.ReplyKeyboardMarkup:
     return markup
 
 
-async def send_info_to_doctor(state: FSMContext, user_id: int):
+async def send_info_to_doctor(state: FSMContext) -> str:
     async with state.proxy() as data:
         text_to_chat = compose_summary(data)
 
     await bot.send_message(config.DOCTORS_GROUP,
                            text_to_chat,
+                           parse_mode='HTML')
+
+    return text_to_chat
+
+
+async def send_info_to_reserve_channel(text: str):
+    await bot.send_message(config.RESERVE_CHANNEL,
+                           text,
                            parse_mode='HTML')
 
 
@@ -167,7 +175,8 @@ async def skip_question(message: types.Message, state: FSMContext):
                     state=Form.approve)
 async def approve_request(message: types.Message, state: FSMContext):
     logger.info('Отправка запроса - ' + str(message.chat.id))
-    await send_info_to_doctor(state, message.chat.id)
+    text = await send_info_to_doctor(state)
+    await send_info_to_reserve_channel(text)
 
     text_to_user = 'Спасибо! Ваша заявка отправлена. ' +\
         'Специалист свяжется с вами лично.' +\
