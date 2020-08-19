@@ -108,6 +108,21 @@ async def ask_for_age(user_id: int):
                            parse_mode='HTML')
 
 
+@dp.message_handler(content_types=types.ContentType.ANY,
+                    state='*')
+async def temporary_stop(message: types.Message, state: FSMContext):
+    logger.info('Стучит - ' + str(message.chat.id))
+
+    text = 'Друзья! Деятельность группы приостановлена.' + \
+        '\nНа данный момент у специалистов критическая загрузка ' + \
+        'в связи с большим количеством запросов!' + \
+        '\n\nБудьте сильными!'
+
+    await bot.send_message(message.chat.id,
+                           text,
+                           reply_markup=types.ReplyKeyboardRemove())
+
+
 @dp.message_handler(commands='start')
 async def cmd_start(message: types.Message):
     """
